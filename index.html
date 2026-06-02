@@ -426,6 +426,11 @@ function parseAgenda(data){
         if(m2)return normalizeTipo(m2[1]);
       }
     }
+    var up=s.toUpperCase();
+    var known=['CONSULTA ABE','CONSULTA INT','DOENÇAAGUDA','RECEITUARIO','DIABETES','S.ADULTOS','S.INFANTIL','S.MATERNA','P.FAMILIAR','TeleC_AC-SA','BAIXAS','OUTRAS','RELAT.','COORDENACAO','INICIATIVA M','V.DOMIC.'];
+    for(var i=0;i<known.length;i++){
+      if(up.indexOf(known[i].toUpperCase())>=0)return known[i];
+    }
     var m3=s.match(/\d{2}:\d{2}\s+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ0-9._\- ]{3,})/i);
     return m3?normalizeTipo(m3[1]):'';
   }
