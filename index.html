@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CumpreDireito</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;font-size:14px}
+header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+header h1{font-size:1.2rem;font-weight:700}
+.container{max-width:1500px;margin:0 auto;padding:16px}
+#uploadScreen{display:block}
+#appScreen{display:none}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:700px){.upload-grid{grid-template-columns:1fr}}
+.ucard{background:#fff;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.ucard h3{font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;color:#2b6cb0;margin-bottom:4px;font-weight:700}
+.ucard.verde h3{color:#276749}
+.ucard p{font-size:.78rem;color:#718096;margin-bottom:10px}
+label.drop{display:block;border:2px dashed #cbd5e0;border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:#f7fafc}
+label.drop:hover,label.drop.drag-over{border-color:#2b6cb0;background:#ebf4ff}
+label.drop.verde:hover,label.drop.verde.drag-over{border-color:#38a169;background:#f0fff4}
+label.drop input{display:none}
+.drop-icon{font-size:1.8rem;margin-bottom:6px}
+.drop-text{font-size:.8rem;color:#718096;line-height:1.6}
+.drop-text b{color:#2b6cb0}
+.drop-text b.g{color:#276749}
+.file-list{margin-top:6px;display:flex;flex-direction:column;gap:3px}
+.fi{background:#c6f6d5;color:#276749;border-radius:5px;padding:3px 9px;font-size:.75rem}
+.progress-bar{height:4px;background:#e2e8f0;border-radius:2px;margin-top:14px;overflow:hidden}
+.progress-fill{height:100%;background:#2b6cb0;width:0;transition:width .4s}
+.btn-process{width:100%;padding:12px;background:#2b6cb0;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:12px;transition:background .2s}
+.btn-process:hover{background:#1a365d}
+.btn-process:disabled{background:#a0aec0;cursor:not-allowed}
+#uploadMsg{margin-top:8px;text-align:center;font-size:.82rem;color:#e53e3e;min-height:18px}
+.top-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:700px){.top-grid{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.card h3{font-size:.72rem;text-transform:uppercase;color:#718096;margin-bottom:8px;letter-spacing:.05em}
+input[type=text],input[type=number],textarea,select{padding:8px 12px;border:2px solid #e2e8f0;border-radius:7px;font-size:.88rem;outline:none;transition:border .2s;font-family:inherit;background:#fff}
+input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{border-color:#2b6cb0}
+input[type=text],textarea,select{width:100%}
+textarea{height:80px;resize:vertical;font-family:monospace;font-size:.8rem}
+.btn{padding:7px 14px;border:none;border-radius:7px;cursor:pointer;font-size:.8rem;font-weight:600;transition:background .2s}
+.btn-blue{background:#2b6cb0;color:#fff}.btn-blue:hover{background:#1a365d}
+.btn-red{background:#e53e3e;color:#fff}.btn-red:hover{background:#c53030}
+.btn-green{background:#38a169;color:#fff}.btn-green:hover{background:#276749}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fl{font-size:.7rem;color:#718096;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.ind-multi{min-width:240px;height:128px}
+.age-row{display:flex;gap:6px;align-items:center}
+.age-row input[type=number]{width:64px;text-align:center}
+.stats{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:0}
+.chip{background:#fff;border-radius:8px;padding:6px 13px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:.78rem;display:flex;align-items:center;gap:5px}
+.chip b{font-size:1rem}
+.red{color:#e53e3e}.orange{color:#dd6b20}.blue{color:#2b6cb0}.green{color:#38a169}
+.tbl-wrap{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);overflow:hidden}
+.tbl-scroll{max-height:52vh;overflow-y:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:#2d3748;color:#fff;padding:8px 10px;text-align:left;font-size:.78rem;font-weight:600;position:sticky;top:0;z-index:10;white-space:nowrap}
+tbody tr{border-bottom:1px solid #e2e8f0;cursor:pointer;transition:background .1s}
+tbody tr:hover{background:#ebf4ff}
+tbody tr.ag-hl{background:#fefcbf!important}
+tbody tr.ag-hl:hover{background:#faf089!important}
+tbody tr.clean-row{background:#f0fff4}
+tbody tr.detail-row{cursor:default}
+tbody tr.detail-row:hover{background:#f7fafc}
+td{padding:7px 10px;vertical-align:middle;font-size:.81rem}
+.nop-cell{line-height:1.5}
+.nop-num{font-weight:700;display:block}
+.sns-num{font-size:.7rem;color:#a0aec0;display:block}
+.badge{display:inline-block;padding:2px 7px;border-radius:11px;font-size:.7rem;font-weight:700}
+.b-red{background:#fed7d7;color:#c53030}.b-orange{background:#feebc8;color:#c05621}
+.b-green{background:#c6f6d5;color:#276749}.b-blue{background:#bee3f8;color:#2b6cb0}
+.b-grey{background:#e2e8f0;color:#4a5568}
+.ind-wrap{display:flex;flex-wrap:wrap;gap:3px}
+.ind-tag{background:#fed7d7;color:#c53030;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:600}
+.ind-tag-ok{background:#c6f6d5;color:#276749;padding:2px 7px;border-radius:10px;font-size:.7rem}
+.consult-badge{display:inline-block;background:#c6f6d5;color:#276749;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:700;margin:1px}
+.no-inc{font-size:.76rem;color:#38a169;font-style:italic}
+.no-res{text-align:center;padding:40px;color:#a0aec0}
+.count-lbl{font-size:.76rem;color:#718096;padding-top:22px}
+.info-banner{background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:9px 13px;font-size:.78rem;color:#2b6cb0;margin-bottom:12px}
+.detail-cell{background:#f7fafc;padding:11px 16px!important}
+.fam-box{margin-top:9px;padding-top:9px;border-top:1px dashed #cbd5e0}
+.fam-title{font-size:.7rem;color:#718096;font-weight:700;text-transform:uppercase;margin-bottom:5px}
+.fam-member{background:#fff;border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;margin-bottom:4px}
+
+
+.seen-row{opacity:.3;text-decoration:line-through}
+.seen-btn{background:none;border:2px solid #cbd5e0;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:.75rem;line-height:1;padding:0;color:#a0aec0;transition:all .15s;flex-shrink:0}
+.seen-btn:hover{border-color:#38a169;color:#38a169}
+.seen-btn.done{background:#38a169;border-color:#38a169;color:#fff}
+
+@media print {
+  body{background:#fff;font-size:11px}
+  header{background:#1a365d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:8px 16px}
+  .no-print{display:none!important}
+  #uploadScreen{display:none!important}
+  .info-banner,.top-grid,.filters{display:none!important}
+  .stats{margin-bottom:6px}
+  .tbl-wrap{box-shadow:none;border:1px solid #e2e8f0}
+  .tbl-scroll{max-height:none!important;overflow:visible!important}
+  thead th{background:#2d3748!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:.7rem;padding:4px 6px}
+  td{padding:3px 6px;font-size:.7rem}
+  tbody tr.detail-row{display:none}
+  table{page-break-inside:auto}
+  tr{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<style>
+#pwScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#1a365d,#2b6cb0);display:flex;align-items:center;justify-content:center;z-index:9999}
+#pwBox{background:#fff;border-radius:16px;padding:36px 40px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3);min-width:300px}
+#pwBox h2{color:#1a365d;margin-bottom:6px;font-size:1.3rem}
+#pwBox p{color:#718096;font-size:.82rem;margin-bottom:20px}
+#pwInput{width:100%;padding:11px 14px;border:2px solid #e2e8f0;border-radius:8px;font-size:1rem;outline:none;text-align:center;letter-spacing:.15em;margin-bottom:12px}
+#pwInput:focus{border-color:#2b6cb0}
+#pwBtn{width:100%;padding:11px;background:#2b6cb0;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer}
+#pwBtn:hover{background:#1a365d}
+#pwErr{color:#e53e3e;font-size:.8rem;margin-top:8px;min-height:18px}
+</style>
+<div id="pwScreen">
+  <div id="pwBox">
+    <h2>&#9877;&#65039; CumpreDireito</h2>
+    <p>Introduza a password para aceder</p>
+    <input type="password" id="pwInput" placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;" onkeydown="if(event.key==='Enter')checkPw()">
+    <button id="pwBtn" onclick="checkPw()">Entrar</button>
+    <div id="pwErr"></div>
+  </div>
+</div>
+<script>
+// Password — altere aqui
+var APP_PW = 'USF2026';
+function checkPw(){
+  var v=document.getElementById('pwInput').value;
+  if(v===APP_PW){
+    document.getElementById('pwScreen').style.display='none';
+    sessionStorage.setItem('pw_ok','1');
+  } else {
+    document.getElementById('pwErr').textContent='Password incorreta. Tente novamente.';
+    document.getElementById('pwInput').value='';
+    document.getElementById('pwInput').focus();
+  }
+}
+// Se já autenticou nesta sessão, não mostrar ecrã
+if(sessionStorage.getItem('pw_ok')==='1'){
+  document.addEventListener('DOMContentLoaded',function(){
+    var s=document.getElementById('pwScreen');if(s)s.style.display='none';
+  });
+}
+</script>
+
+<header>
+  <h1>&#9877;&#65039; CumpreDireito</h1>
+  <span id="hdrInfo" style="font-size:.78rem;opacity:.8"></span>
+</header>
+
+<!-- UPLOAD -->
+<div id="uploadScreen">
+<div class="container">
+  <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:9px 13px;font-size:.78rem;color:#2b6cb0;margin-top:12px">
+    &#128274; Ficheiros processados <strong>exclusivamente no browser</strong> &mdash; nenhum dado sai deste dispositivo.
+  </div>
+  <div class="upload-grid">
+    <div class="ucard">
+      <h3>&#128203; Ficheiros de Incumpridores (L03)</h3>
+      <p>Ficheiros <strong>P02.01.01.L03</strong> do SDM &mdash; pode selecionar v&aacute;rios de uma vez</p>
+      <label class="drop" id="dropL03">
+        <input type="file" id="fileL03" multiple accept=".xlsx,.xls" onchange="handleL03(this.files)">
+        <div class="drop-icon">&#128196;</div>
+        <div class="drop-text">Clique aqui para escolher os ficheiros L03<br><b>Aceita v&aacute;rios em simult&acirc;neo</b></div>
+      </label>
+      <div class="file-list" id="listL03"></div>
+    </div>
+    <div class="ucard">
+      <h3>&#128101; Lista de Inscritos (L01)</h3>
+      <p>Ficheiro <strong>P01.01.L01</strong> &mdash; todos os grupos et&aacute;rios, sem filtros</p>
+      <label class="drop" id="dropL01">
+        <input type="file" id="fileL01" accept=".xlsx,.xls" onchange="handleL01(this.files)">
+        <div class="drop-icon">&#128100;</div>
+        <div class="drop-text">Clique aqui para escolher o ficheiro L01<br><b>Um ficheiro apenas</b></div>
+      </label>
+      <div class="file-list" id="listL01"></div>
+    </div>
+    <div class="ucard verde" style="grid-column:1/-1">
+      <h3>&#128197; Agenda do m&ecirc;s &mdash; <span style="font-weight:400;text-transform:none;font-size:.82rem">opcional</span></h3>
+      <p>Exporta&ccedil;&atilde;o do SClínico &mdash; a lista de agendamentos do m&ecirc;s com nome e n&ordm; SNS. O cruzamento &eacute; feito automaticamente pelo n&ordm; SNS.</p>
+      <label class="drop verde" id="dropAgF">
+        <input type="file" id="fileAgF" multiple accept=".xlsx,.xls" onchange="handleAgF(this.files)">
+        <div class="drop-icon">&#128197;</div>
+        <div class="drop-text">Clique aqui para escolher os ficheiros de agenda<br><b class="g">Aceita v&aacute;rios meses em simult&acirc;neo</b></div>
+      </label>
+      <div class="file-list" id="listAgF"></div>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+  <div id="uploadMsg"></div>
+  <button class="btn-process" id="btnProcess" disabled onclick="processAll()">&#9654; Processar e Carregar Dados</button>
+</div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+<div class="container">
+  <div class="info-banner" id="dataBanner"></div>
+  <div class="top-grid no-print">
+    <div class="card">
+      <h3>&#128269; Pesquisar</h3>
+      <input type="text" id="srch" placeholder="Nome, n&ordm; processo ou n&ordm; utente SNS..." oninput="render()">
+      <div style="margin-top:8px">
+        <div class="fl" style="margin-bottom:4px">M&eacute;dico</div>
+        <select id="fMed" onchange="render()"><option value="">Todos os m&eacute;dicos</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <h3>&#128197; Agenda manual &mdash; n&ordm; processo (um por linha)</h3>
+      <textarea id="agenda" placeholder="4500207&#10;3616701&#10;5637832"></textarea>
+      <div style="margin-top:7px;display:flex;gap:7px;align-items:center">
+        <button class="btn btn-blue" onclick="applyAgenda()">&#10004; Aplicar</button>
+        <button class="btn btn-red" onclick="clearAgenda()">&#10006; Limpar</button>
+        <span style="margin-left:auto;font-size:.73rem;color:#a0aec0;cursor:pointer;text-decoration:underline" onclick="reloadFiles()">&#8635; Novo m&ecirc;s</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div class="stats" id="statsBar"></div>
+    <button class="btn btn-green no-print" onclick="window.print()">&#128424; Imprimir lista</button>
+    <button class="btn no-print" id="btnHideSeen" onclick="toggleHideSeen()" style="background:#718096;color:#fff;display:none">&#128065; Esconder vistos</button>
+  </div>
+  <div class="filters no-print">
+    <div class="fg">
+      <div class="fl">Indicadores &mdash; AND (t&ecirc;m de ter TODOS)</div>
+      <select id="fInd" multiple class="ind-multi" onchange="render()"></select>
+      <div style="font-size:.68rem;color:#a0aec0;margin-top:2px">Ctrl+clique para m&uacute;ltiplos</div>
+    </div>
+    <div class="fg">
+      <div class="fl">Idades</div>
+      <div class="age-row">
+        <input type="number" id="ageMin" placeholder="Min" min="0" max="120" oninput="render()">
+        <span style="color:#a0aec0">&#8594;</span>
+        <input type="number" id="ageMax" placeholder="Max" min="0" max="120" oninput="render()">
+        <span style="font-size:.76rem;color:#718096">anos</span>
+      </div>
+      <div style="margin-top:8px">
+        <div class="fl">Incumprimentos</div>
+        <select id="fTotal" onchange="render()">
+          <option value="0">Todos</option>
+          <option value="5">&ge;5</option>
+          <option value="3">&ge;3</option>
+        </select>
+      </div>
+      <div style="margin-top:8px">
+        <div class="fl">Mostrar</div>
+        <select id="fAgenda" onchange="render()">
+          <option value="">Todos</option>
+          <option value="1">S&oacute; agenda</option>
+          <option value="0">Sem consulta agendada</option>
+        </select>
+      </div>
+
+      <button class="btn btn-blue" onclick="clearFilters()" style="margin-top:10px;font-size:.72rem">&#8635; Limpar filtros</button>
+    </div>
+    <div class="count-lbl" id="countLbl"></div>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-scroll">
+      <table id="mainTable">
+        <thead><tr>
+          <th style="width:32px"></th><th>N&ordm; Processo / SNS</th><th>Nome</th><th>Sexo</th><th>Idade</th>
+          <th>M&eacute;dico</th><th>Consulta</th><th>Indicadores em falta</th><th>Total</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="no-res" id="noRes" style="display:none">Nenhum utente encontrado.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+var l03Files=[],l01File=null,agFile=null,agFiles=[];
+var UTENTES=[],INSCRITOS={},utIdx={},snsToNop={};
+var IND_NAMES={},ALL_INDS=[],MEDICOS=[];
+var agendaSet=new Set(),agendaOrder=[],agendaFileMap={},expandedNop=null;
+var seenSet=new Set(),hideSeen=false;
+
+function handleL03(files){
+  for(var i=0;i<files.length;i++)l03Files.push(files[i]);
+  document.getElementById('listL03').innerHTML=l03Files.map(function(f){return '<div class="fi">\u2713 '+f.name+'</div>';}).join('');
+  checkReady();
+}
+function handleL01(files){
+  if(!files.length)return;
+  l01File=files[0];
+  document.getElementById('listL01').innerHTML='<div class="fi">\u2713 '+files[0].name+'</div>';
+  checkReady();
+}
+function handleAgF(files){
+  if(!files.length)return;
+  for(var i=0;i<files.length;i++)agFiles.push(files[i]);
+  agFile=agFiles[0];
+  document.getElementById('listAgF').innerHTML=agFiles.map(function(f){return '<div class="fi">\u2713 '+f.name+'</div>';}).join('');
+}
+function checkReady(){
+  document.getElementById('btnProcess').disabled=!(l03Files.length>0&&l01File);
+}
+
+window.addEventListener('DOMContentLoaded',function(){
+  [['dropL03',handleL03],['dropL01',handleL01],['dropAgF',handleAgF]].forEach(function(pair){
+    var el=document.getElementById(pair[0]),fn=pair[1];
+    el.addEventListener('dragover',function(e){e.preventDefault();el.classList.add('drag-over');});
+    el.addEventListener('dragleave',function(){el.classList.remove('drag-over');});
+    el.addEventListener('drop',function(e){e.preventDefault();el.classList.remove('drag-over');fn(e.dataTransfer.files);});
+  });
+});
+
+function readXlsx(file){
+  return new Promise(function(resolve){
+    var r=new FileReader();
+    r.onload=function(e){
+      var wb=XLSX.read(e.target.result,{type:'binary',raw:false});
+      resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false}));
+    };
+    r.readAsBinaryString(file);
+  });
+}
+function findHdr(data,key){
+  for(var i=0;i<Math.min(15,data.length);i++)
+    for(var j=0;j<data[i].length;j++)
+      if(String(data[i][j]).trim()===key)return i;
+  return -1;
+}
+function parseAge(s){var m=String(s).match(/(\d+)/);return m?parseInt(m[1]):0;}
+
+function parseL03(data){
+  var hr=findHdr(data,'NOP');if(hr<0)return[];
+  var rows=[];
+  for(var r=hr+1;r<data.length;r++){
+    var row=data[r];
+    var nop=String(row[1]||'').trim().replace(/\.0$/,'');
+    if(!nop.match(/^\d+$/))continue;
+    nop=nop.padStart(7,'0');
+    var code=String(row[8]||'').trim();
+    var m=code.match(/\d{4}\.(\d{3})\.\d{2}/);
+    if(!m)continue;
+    rows.push({nop:nop,nome:String(row[2]||'').trim(),sexo:String(row[4]||'').trim(),
+      idade:String(row[5]||'').trim(),indId:m[1],indName:String(row[9]||'').trim(),
+      medico:String(row[13]||'').trim()});
+  }
+  return rows;
+}
+
+function parseL01(data){
+  var hr=findHdr(data,'NOP');if(hr<0)return{};
+  var ins={};
+  for(var r=hr+1;r<data.length;r++){
+    var row=data[r];
+    var nop=String(row[0]||'').trim().replace(/\.0$/,'');
+    if(!nop.match(/^\d+$/))continue;
+    nop=nop.padStart(7,'0');
+    var sns=String(row[1]||'').trim().replace(/\.0$/,'');
+    ins[nop]={nome:String(row[2]||'').trim(),sexo:String(row[3]||'').trim(),
+      idade:String(row[4]||'').trim(),ageN:parseAge(row[4]),
+      medico:String(row[7]||'').trim(),sns:sns};
+  }
+  return ins;
+}
+
+function parseAgenda(data){
+  var results=[];
+  var seen={};
+
+  function rowToString(row){
+    return row.map(function(c){return c!=null?String(c).trim():'';}).join(' ');
+  }
+
+  function fmtDate(raw){
+    if(!raw&&raw!==0)return null;
+    var s=String(raw).trim();
+    var m=s.match(/^(\d{2})-(\d{2})-(\d{4})/);
+    if(m)return s.substring(0,10);
+    var m2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m2)return m2[1].padStart(2,'0')+'-'+m2[2].padStart(2,'0')+'-'+m2[3];
+    var m3=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m3)return m3[3]+'-'+m3[2]+'-'+m3[1];
+    return null;
+  }
+
+  function extractDate(fullStr){
+    var m=fullStr.match(/(\d{2}-\d{2}-\d{4})/);
+    if(m)return m[1];
+    return null;
+  }
+
+  function extractSNS(fullStr){
+    var matches=fullStr.match(/(\d{9})/g);
+    if(matches&&matches.length>0)return matches[matches.length-1];
+    var m8=fullStr.match(/(\d{8})/);
+    return m8?m8[1]:null;
+  }
+
+  function extractMeio(fullStr){
+    var s=fullStr.toLowerCase();
+    return (s.indexOf('telef')>=0||s.indexOf('telem')>=0)?'tel':'';
+  }
+
+  function normalizeTipo(tipo){
+    return String(tipo||'').trim().replace(/\s+/g,' ').replace(/[.,;:]+$/,'');
+  }
+
+  function extractTipo(fullStr, sns){
+    var s=String(fullStr||'').replace(/\s+/g,' ').trim();
+    if(!s)return '';
+    var m=s.match(/\d{2}:\d{2}\s+(.+?)\s+\d{8,9}/);
+    if(m)return normalizeTipo(m[1]);
+    if(sns){
+      var p=s.indexOf(String(sns));
+      if(p>0){
+        var left=s.substring(0,p).trim();
+        var m2=left.match(/\d{2}:\d{2}\s+(.+)$/);
+        if(m2)return normalizeTipo(m2[1]);
+      }
+    }
+    var m3=s.match(/\d{2}:\d{2}\s+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ0-9._\- ]{3,})/i);
+    return m3?normalizeTipo(m3[1]):'';
+  }
+
+  function isJunk(fullStr){
+    if(!fullStr||fullStr.length<10)return true;
+    var s=fullStr.toLowerCase();
+    if(s.indexOf('processado')>=0)return true;
+    if(s.indexOf('marcações por')>=0||s.indexOf('marcacoes por')>=0)return true;
+    if(s.indexOf('tipo de evento')>=0)return true;
+    if(s.indexOf('profissional:')>=0)return true;
+    if(s.indexOf('instituição:')>=0||s.indexOf('instituicao:')>=0)return true;
+    if(/página\s+\d+\s+de\s+\d+/i.test(fullStr))return true;
+    if(/pagina\s+\d+\s+de\s+\d+/i.test(fullStr))return true;
+    return false;
+  }
+
+  for(var r=0;r<data.length;r++){
+    var row=data[r];
+    if(!row||!row.length)continue;
+    var fullStr=rowToString(row);
+    if(isJunk(fullStr))continue;
+    var col0=row[0]!=null?String(row[0]).trim():'';
+    var dateFmt=fmtDate(col0);
+    if(!dateFmt)dateFmt=extractDate(fullStr);
+    if(!dateFmt)continue;
+    var sns=extractSNS(fullStr);
+    if(!sns)continue;
+    var tipo=extractTipo(fullStr,sns);
+    var meio=extractMeio(fullStr);
+    var key=dateFmt+'|'+sns+'|'+tipo;
+    if(seen[key])continue;
+    seen[key]=true;
+    results.push({sns:sns,date:dateFmt,tipo:tipo,meio:meio});
+  }
+
+  return results;
+}
+
+async function processAll(){
+  var btn=document.getElementById('btnProcess');
+  btn.disabled=true;btn.textContent='A processar...';
+  var pf=document.getElementById('pFill');
+  pf.style.width='10%';document.getElementById('uploadMsg').textContent='';
+  try{
+    // L01
+    INSCRITOS=parseL01(await readXlsx(l01File));
+    // Mapa inverso SNS -> NOP
+    snsToNop={};
+    Object.keys(INSCRITOS).forEach(function(nop){
+      if(INSCRITOS[nop].sns)snsToNop[INSCRITOS[nop].sns]=nop;
+    });
+    pf.style.width='30%';
+    // L03s
+    var allRows=[];
+    for(var i=0;i<l03Files.length;i++){
+      allRows=allRows.concat(parseL03(await readXlsx(l03Files[i])));
+      pf.style.width=(30+Math.round(50*(i+1)/l03Files.length))+'%';
+    }
+    // Agenda
+    agendaFileMap={};
+    var agendaDates=[];
+    if(agFiles.length>0){
+      var agData=[];
+      for(var ai=0;ai<agFiles.length;ai++){agData=agData.concat(parseAgenda(await readXlsx(agFiles[ai])));}
+      var dateSet=new Set();
+      agData.forEach(function(item){
+        var nop=snsToNop[item.sns];
+        if(!nop)return;
+        if(!agendaFileMap[nop])agendaFileMap[nop]=[];
+        // evitar duplicados mesma data+tipo
+        var key=item.date+'|'+item.tipo;
+        var exists=agendaFileMap[nop].some(function(x){return x.date+'|'+x.tipo===key;});
+        if(!exists)agendaFileMap[nop].push({date:item.date,tipo:item.tipo,meio:item.meio||''});
+        dateSet.add(item.date);
+      });
+      agendaDates=Array.from(dateSet).sort(function(a,b){
+        return a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join(''));
+      });
+    }
+    pf.style.width='85%';
+    // Build UTENTES
+    IND_NAMES={};
+    allRows.forEach(function(r){if(r.indId&&r.indName)IND_NAMES[r.indId]=r.indName;});
+    var utMap={};
+    allRows.forEach(function(r){
+      if(!utMap[r.nop])utMap[r.nop]={nop:r.nop,nome:r.nome,sexo:r.sexo,
+        idade:r.idade,ageN:parseAge(r.idade),medico:r.medico,sns:'',inds:{}};
+      utMap[r.nop].inds[r.indId]=r.indName;
+    });
+    Object.keys(utMap).forEach(function(nop){
+      if(INSCRITOS[nop]){
+        var ins=INSCRITOS[nop];
+        utMap[nop].medico=ins.medico||utMap[nop].medico;
+        utMap[nop].ageN=ins.ageN;
+        utMap[nop].idade=ins.idade||utMap[nop].idade;
+        utMap[nop].sns=ins.sns||'';
+      }
+    });
+    UTENTES=Object.values(utMap).map(function(u){u.total=Object.keys(u.inds).length;return u;});
+    utIdx={};UTENTES.forEach(function(u){utIdx[u.nop]=u;});
+    ALL_INDS=Object.keys(IND_NAMES).sort();
+    MEDICOS=[...new Set(UTENTES.map(function(u){return u.medico;}))].filter(Boolean).sort();
+    // UI - medicos
+    var selMed=document.getElementById('fMed');
+    selMed.innerHTML='<option value="">Todos os m\u00e9dicos</option>';
+    MEDICOS.forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=m;selMed.appendChild(o);});
+    // UI - indicadores
+    var selInd=document.getElementById('fInd');selInd.innerHTML='';
+    ALL_INDS.forEach(function(id){var o=document.createElement('option');o.value=id;
+      o.textContent=id+' \u2014 '+(IND_NAMES[id]||id);selInd.appendChild(o);});
+
+    // Banner
+    var ins=Object.keys(INSCRITOS).length;
+    var agCruz=Object.keys(agendaFileMap).length;
+    document.getElementById('hdrInfo').textContent=MEDICOS.length+' M\u00e9dicos \u00b7 '+ins+' Inscritos';
+    document.getElementById('dataBanner').innerHTML=
+      '\ud83d\udccb <strong>'+UTENTES.length+' incumpridores</strong> \u00b7 '+
+      ALL_INDS.length+' indicadores \u00b7 '+MEDICOS.length+' m\u00e9dicos \u00b7 '+ins+' inscritos'+
+      (agFile?' \u00b7 \ud83d\udcc5 '+agCruz+' utentes cruzados com a agenda':'')+'&nbsp;|&nbsp;'+
+      '<a href="#" onclick="reloadFiles();return false;" style="color:#2b6cb0">Carregar novo m\u00eas</a>';
+    pf.style.width='100%';
+    document.getElementById('uploadScreen').style.display='none';
+    document.getElementById('appScreen').style.display='block';
+    render();
+  }catch(ex){
+    document.getElementById('uploadMsg').textContent='Erro: '+ex.message;
+    btn.disabled=false;btn.textContent='\u25b6 Processar e Carregar Dados';
+  }
+}
+
+function reloadFiles(){
+  l03Files=[];l01File=null;agFile=null;agFiles=[];
+  ['listL03','listL01','listAgF'].forEach(function(id){document.getElementById(id).innerHTML='';});
+  ['fileL03','fileL01','fileAgF'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('pFill').style.width='0';
+  document.getElementById('btnProcess').disabled=true;
+  document.getElementById('btnProcess').textContent='\u25b6 Processar e Carregar Dados';
+  document.getElementById('uploadScreen').style.display='block';
+  document.getElementById('appScreen').style.display='none';
+  UTENTES=[];INSCRITOS={};utIdx={};snsToNop={};agendaFileMap={};
+}
+
+function nmatch(u,s){
+  if(!s.trim())return true;
+  var q=s.trim().toLowerCase();
+  if(u.sns&&u.sns.indexOf(q)>=0)return true;
+  if(u.nop.indexOf(q)>=0)return true;
+  return q.split(/\s+/).every(function(w){return u.nome.toLowerCase().indexOf(w)>=0;});
+}
+function getSelInds(){
+  return Array.from(document.getElementById('fInd').options)
+    .filter(function(o){return o.selected;}).map(function(o){return o.value;});
+}
+function applyAgenda(){
+  agendaOrder=document.getElementById('agenda').value.split('\n')
+    .map(function(l){return l.trim().replace(/\D/g,'');}).filter(Boolean)
+    .map(function(l){return l.padStart(7,'0');});
+  agendaSet=new Set(agendaOrder);
+  render();
+}
+function clearAgenda(){agendaSet=new Set();agendaOrder=[];seenSet=new Set();document.getElementById('agenda').value='';document.getElementById('fAgenda').value='';render();}
+function clearFilters(){
+  document.getElementById('srch').value='';document.getElementById('fMed').value='';
+  Array.from(document.getElementById('fInd').options).forEach(function(o){o.selected=false;});
+  document.getElementById('fTotal').value='0';document.getElementById('fAgenda').value='';
+  document.getElementById('ageMin').value='';document.getElementById('ageMax').value='';
+  render();
+}
+
+function render(){
+  var srch=document.getElementById('srch').value;
+  var med=document.getElementById('fMed').value;
+  var selInds=getSelInds();
+  var tot=parseInt(document.getElementById('fTotal').value)||0;
+  var ag=document.getElementById('fAgenda').value;
+  var ageMin=parseInt(document.getElementById('ageMin').value)||0;
+  var ageMax=parseInt(document.getElementById('ageMax').value)||0;
+
+  var data=[];
+  var showOnlyAg=(ag==='1'); var showNoAg=(ag==='0');
+  if(showOnlyAg){
+    var pool=agendaOrder.length>0?agendaOrder:Array.from(agendaSet);
+    pool.forEach(function(nop){
+      var u=utIdx[nop];
+      if(!u){var ins=INSCRITOS[nop];if(ins)u={nop:nop,nome:ins.nome,sexo:ins.sexo,idade:ins.idade,ageN:ins.ageN,medico:ins.medico,sns:ins.sns||'',inds:{},total:0};}
+      if(!u)return;
+      if(med&&u.medico!==med)return;
+      if(selInds.length>0&&!selInds.every(function(id){return !!u.inds[id];}))return;
+      if(tot&&u.total<tot)return;
+      if(ageMin&&u.ageN<ageMin)return;if(ageMax&&u.ageN>ageMax)return;
+      data.push(u);
+    });
+  }else{
+    data=UTENTES.filter(function(u){
+      if(!nmatch(u,srch))return false;
+      if(med&&u.medico!==med)return false;
+      if(selInds.length>0&&!selInds.every(function(id){return !!u.inds[id];}))return false;
+      if(tot&&u.total<tot)return false;
+      if(ageMin&&u.ageN<ageMin)return false;if(ageMax&&u.ageN>ageMax)return false;
+      if(showNoAg&&agendaFileMap&&agendaFileMap[u.nop]&&agendaFileMap[u.nop].length>0)return false;
+      return true;
+    });
+  }
+  if(!showOnlyAg) data.sort(function(a,b){return a.nop.localeCompare(b.nop);});
+
+  var t=data.length,hi=0,mid=0,clean=0,agCount=0;
+  data.forEach(function(u){
+    if(u.total>=5)hi++;else if(u.total>=3)mid++;
+    if(u.total===0)clean++;
+    if(agendaSet.has(u.nop)||agendaFileMap[u.nop])agCount++;
+  });
+  document.getElementById('statsBar').innerHTML=
+    '<div class="chip"><b>'+t+'</b> utentes</div>'+
+    '<div class="chip"><b class="red">'+hi+'</b> \u22655 incump.</div>'+
+    '<div class="chip"><b class="orange">'+mid+'</b> 3\u20134 incump.</div>'+
+    (clean>0?'<div class="chip"><b class="green">'+clean+'</b> sem incump.</div>':'')+
+    (agCount>0?'<div class="chip"><b class="blue">'+agCount+'</b> na agenda</div>':'');
+  // Filtrar vistos se esconder activo
+  var btnHS=document.getElementById('btnHideSeen');
+  if(btnHS){btnHS.style.display=seenSet.size>0?'inline-block':'none';btnHS.textContent=hideSeen?'👁 Mostrar vistos ('+seenSet.size+')':'👁 Esconder vistos ('+seenSet.size+')';}
+  var renderData=hideSeen?data.filter(function(u){return !seenSet.has(u.nop);}):data;
+  document.getElementById('countLbl').textContent=renderData.length+' resultado(s)'+(hideSeen&&seenSet.size?' ('+seenSet.size+' escondidos)':'');
+  renderTable(renderData);
+}
+
+function getFamilia(nop){
+  var fkey=nop.substring(0,6);
+  return Object.keys(INSCRITOS).filter(function(n){return n!==nop&&n.substring(0,6)===fkey;})
+    .map(function(n){var ins=INSCRITOS[n];var u=utIdx[n];return{nop:n,nome:ins.nome,sexo:ins.sexo,idade:ins.idade,sns:ins.sns||'',inds:u?u.inds:{}};});
+}
+
+function renderTable(data){
+  var tbody=document.getElementById('tbody');
+  tbody.innerHTML='';
+  document.getElementById('noRes').style.display=data.length?'none':'block';
+  expandedNop=null;
+  data.forEach(function(u){
+    var isAg=agendaSet.has(u.nop);
+    var hasDates=agendaFileMap[u.nop]&&agendaFileMap[u.nop].length>0;
+    var isClean=u.total===0;
+    var bc=isClean?'b-grey':u.total>=5?'b-red':u.total>=3?'b-orange':'b-green';
+    var inds=Object.keys(u.inds||{});
+    var tags=isClean?'<span class="no-inc">\u2713 Sem indicadores em falta</span>':
+      inds.slice(0,5).map(function(id){return '<span class="ind-tag" title="'+(IND_NAMES[id]||id)+'">'+id+'</span>';}).join('')+
+      (inds.length>5?'<span class="ind-tag">+'+(inds.length-5)+'</span>':'');
+    var medShort=u.medico?u.medico.split(' ').slice(0,2).join(' '):'';
+    var consultCell=hasDates
+      ?(agendaFileMap[u.nop]).map(function(x){
+          var mb=x.meio==='tel'?' \ud83d\udcde Tel':' \ud83c\udfe5 Pres.';
+          var label='\ud83d\udcc5 '+x.date+(x.tipo?' · '+x.tipo:'')+mb;
+          return '<span class="consult-badge">'+label+'</span>';
+        }).join('<br>')
+      :(isAg?'<span class="consult-badge">\ud83d\udcc5 agenda</span>':'<span style="color:#e2e8f0">\u2014</span>');
+    var tr=document.createElement('tr');
+    if(isAg||hasDates)tr.classList.add('ag-hl');
+    if(isClean&&!isAg&&!hasDates)tr.classList.add('clean-row');
+    var isSeen=seenSet.has(u.nop);
+    if(isSeen)tr.classList.add('seen-row');
+    var seenCls=isSeen?'seen-btn done':'seen-btn';
+    tr.innerHTML=
+      '<td style="text-align:center"><button class="'+seenCls+'" onclick="toggleSeen(\'' +u.nop+ '\',event)" title="Marcar como visto">&#10003;</button></td>'+
+      '<td class="nop-cell"><span class="nop-num">'+u.nop+'</span>'+(u.sns?'<span class="sns-num">'+u.sns+'</span>':'')+'</td>'+
+      '<td>'+u.nome+'</td>'+
+      '<td>'+u.sexo+'</td><td>'+u.idade+'</td>'+
+      '<td><span class="badge b-blue" style="font-size:.68rem">'+medShort+'</span></td>'+
+      '<td>'+consultCell+'</td>'+
+      '<td><div class="ind-wrap">'+tags+'</div></td>'+
+      '<td><span class="badge '+bc+'">'+u.total+'</span></td>';
+    tr.addEventListener('click',function(){toggleDetail(tr,u);});
+    tbody.appendChild(tr);
+  });
+}
+
+function toggleHideSeen(){
+  hideSeen=!hideSeen;
+  render();
+}
+function toggleSeen(nop,e){
+  e.stopPropagation();
+  if(seenSet.has(nop))seenSet.delete(nop);else seenSet.add(nop);
+  render();
+}
+function toggleDetail(tr,u){
+  var ex=document.getElementById('drow');
+  if(ex){if(expandedNop===u.nop){ex.remove();expandedNop=null;return;}ex.remove();}
+  expandedNop=u.nop;
+  var inds=Object.keys(u.inds||{});
+  var allInds=inds.length>0?inds.map(function(id){
+    return '<span class="ind-tag" style="margin:2px">'+id+' \u2014 '+(IND_NAMES[id]||id)+'</span>';
+  }).join(''):'<span class="ind-tag-ok">\u2713 Sem indicadores em falta</span>';
+  var familia=getFamilia(u.nop);
+  var famHtml='';
+  if(familia.length>0){
+    var members=familia.map(function(f){
+      var fi=Object.keys(f.inds||{});
+      var fiTags=fi.length>0?fi.map(function(id){
+        return '<span class="ind-tag" style="font-size:.68rem">'+id+' \u2014 '+(IND_NAMES[id]||id)+'</span>';
+      }).join(''):'<span class="ind-tag-ok">\u2713</span>';
+      var famConsultas=(agendaFileMap&&agendaFileMap[f.nop]&&agendaFileMap[f.nop].length>0)
+        ?agendaFileMap[f.nop].map(function(x){
+            var mb=x.meio==='tel'?'\ud83d\udcde Tel':'\ud83d\udcf9 Pres.';
+            var label='\ud83d\udcc5 '+x.date+(x.tipo?' — '+x.tipo+' '+mb:'');
+            return '<span class="consult-badge">'+label+'</span>';
+          }).join('')
+        :'';
+      return '<div class="fam-member"><strong>'+f.nome+'</strong> &middot; '+f.sexo+' &middot; '+f.idade+
+        (f.sns?' &middot; SNS: '+f.sns:'')+' &middot; Proc. '+f.nop+
+        (famConsultas?'<div style="margin-top:3px">'+famConsultas+'</div>':'')+
+        '<div class="ind-wrap" style="margin-top:3px">'+fiTags+'</div></div>';
+    }).join('');
+    famHtml='<div class="fam-box"><div class="fam-title">\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67 Fam\u00edlia</div>'+members+'</div>';
+  }
+  var dtd=document.createElement('tr');
+  dtd.id='drow';dtd.classList.add('detail-row');
+  dtd.innerHTML='<td colspan="9" class="detail-cell">'+
+    '<strong>'+u.nome+'</strong> &middot; Proc. '+u.nop+
+    (u.sns?' &middot; SNS: <strong>'+u.sns+'</strong>':'')+
+    ' &middot; '+u.sexo+' &middot; '+u.idade+' &middot; '+u.medico+
+    '<div class="ind-wrap" style="margin-top:7px">'+allInds+'</div>'+famHtml+'</td>';
+  tr.after(dtd);
+}
+</script>
+
+<footer style="text-align:center;padding:14px;font-size:.72rem;color:#a0aec0;margin-top:16px;border-top:1px solid #e2e8f0" class="no-print">
+  &copy; 2025&ndash;2026 M&oacute;nica Albino &mdash; Todos os direitos reservados
+</footer>
+
+<footer style="text-align:center;padding:14px;font-size:.72rem;color:#a0aec0;margin-top:16px;border-top:1px solid #e2e8f0" class="no-print">
+  &copy; 2025&ndash;2026 Mónica Albino &mdash; Todos os direitos reservados
+</footer>
+</body>
+</html>
