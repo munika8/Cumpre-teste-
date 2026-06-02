@@ -372,36 +372,56 @@ function parseL01(data){
 }
 
 function parseAgenda(data){
+  // Completely format-agnostic parser for SClinico agenda exports
+  // Works regardless of column layout or export format
+  // Only relies on patterns always present: date, time, 9-digit SNS, meio keyword
+
   var results=[];
   var seen={};
 
   function rowToString(row){
+    // Concatenate all non-null cells into one searchable string
     return row.map(function(c){return c!=null?String(c).trim():'';}).join(' ');
   }
 
   function fmtDate(raw){
     if(!raw&&raw!==0)return null;
     var s=String(raw).trim();
+    // DD-MM-YYYY
     var m=s.match(/^(\d{2})-(\d{2})-(\d{4})/);
     if(m)return s.substring(0,10);
+    // M/D/YYYY or MM/DD/YYYY (sheetjs US locale)
     var m2=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if(m2)return m2[1].padStart(2,'0')+'-'+m2[2].padStart(2,'0')+'-'+m2[3];
+    // YYYY-MM-DD
     var m3=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if(m3)return m3[3]+'-'+m3[2]+'-'+m3[1];
     return null;
   }
 
   function extractDate(fullStr){
+    // DD-MM-YYYY anywhere in string
     var m=fullStr.match(/(\d{2}-\d{2}-\d{4})/);
     if(m)return m[1];
     return null;
   }
 
   function extractSNS(fullStr){
-    var matches=fullStr.match(/(\d{9})/g);
-    if(matches&&matches.length>0)return matches[matches.length-1];
-    var m8=fullStr.match(/(\d{8})/);
+    // 9-digit number (SNS) - avoid matching years/dates
+    var matches=fullStr.match(/\b(\d{9})\b/g);
+    if(matches&&matches.length>0)return matches[0];
+    // fallback 8-digit
+    var m8=fullStr.match(/\b(\d{8})\b/);
     return m8?m8[1]:null;
+  }
+
+  function extractTipo(fullStr){
+    // Tipo always appears after HH:MM pattern
+    var m=fullStr.match(/\d{2}:\d{2}\s+([\w\u00C0-\u024F\u00E0-\u00FF]+(?:[.\-][\w\u00C0-\u024F\u00E0-\u00FF]+)*)/);
+    if(!m)return '';
+    var raw=m[1].trim();
+    // Clean up - remove trailing punctuation
+    return raw.replace(/[.,;:]+$/,'');
   }
 
   function extractMeio(fullStr){
@@ -409,33 +429,8 @@ function parseAgenda(data){
     return (s.indexOf('telef')>=0||s.indexOf('telem')>=0)?'tel':'';
   }
 
-  function normalizeTipo(tipo){
-    return String(tipo||'').trim().replace(/\s+/g,' ').replace(/[.,;:]+$/,'');
-  }
-
-  function extractTipo(fullStr, sns){
-    var s=String(fullStr||'').replace(/\s+/g,' ').trim();
-    if(!s)return '';
-    var m=s.match(/\d{2}:\d{2}\s+(.+?)\s+\d{8,9}/);
-    if(m)return normalizeTipo(m[1]);
-    if(sns){
-      var p=s.indexOf(String(sns));
-      if(p>0){
-        var left=s.substring(0,p).trim();
-        var m2=left.match(/\d{2}:\d{2}\s+(.+)$/);
-        if(m2)return normalizeTipo(m2[1]);
-      }
-    }
-    var up=s.toUpperCase();
-    var known=['CONSULTA ABE','CONSULTA INT','DOENÇAAGUDA','RECEITUARIO','DIABETES','S.ADULTOS','S.INFANTIL','S.MATERNA','P.FAMILIAR','TeleC_AC-SA','BAIXAS','OUTRAS','RELAT.','COORDENACAO','INICIATIVA M','V.DOMIC.'];
-    for(var i=0;i<known.length;i++){
-      if(up.indexOf(known[i].toUpperCase())>=0)return known[i];
-    }
-    var m3=s.match(/\d{2}:\d{2}\s+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ0-9._\- ]{3,})/i);
-    return m3?normalizeTipo(m3[1]):'';
-  }
-
   function isJunk(fullStr){
+    // Skip headers, footers, page markers, empty
     if(!fullStr||fullStr.length<10)return true;
     var s=fullStr.toLowerCase();
     if(s.indexOf('processado')>=0)return true;
@@ -445,25 +440,39 @@ function parseAgenda(data){
     if(s.indexOf('instituição:')>=0||s.indexOf('instituicao:')>=0)return true;
     if(/página\s+\d+\s+de\s+\d+/i.test(fullStr))return true;
     if(/pagina\s+\d+\s+de\s+\d+/i.test(fullStr))return true;
+    // Corrupt page-break rows: very long, no date pattern, mixed content
+    if(fullStr.length>120&&!fullStr.match(/\d{2}-\d{2}-\d{4}/)&&!fullStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}/))return true;
     return false;
   }
 
   for(var r=0;r<data.length;r++){
     var row=data[r];
     if(!row||!row.length)continue;
-    var fullStr=rowToString(row);
-    if(isJunk(fullStr))continue;
+
+    // Try col0 as structured date first (sheetjs Date object → string)
     var col0=row[0]!=null?String(row[0]).trim():'';
     var dateFmt=fmtDate(col0);
-    if(!dateFmt)dateFmt=extractDate(fullStr);
+
+    var fullStr=rowToString(row);
+    if(isJunk(fullStr))continue;
+
+    if(!dateFmt){
+      // Try extracting date from full string (FORMAT 2: text dump)
+      dateFmt=extractDate(fullStr);
+    }
     if(!dateFmt)continue;
+
     var sns=extractSNS(fullStr);
     if(!sns)continue;
-    var tipo=extractTipo(fullStr,sns);
+
+    var tipo=extractTipo(fullStr);
     var meio=extractMeio(fullStr);
+
+    // Deduplicate
     var key=dateFmt+'|'+sns+'|'+tipo;
     if(seen[key])continue;
     seen[key]=true;
+
     results.push({sns:sns,date:dateFmt,tipo:tipo,meio:meio});
   }
 
@@ -496,6 +505,7 @@ async function processAll(){
     if(agFiles.length>0){
       var agData=[];
       for(var ai=0;ai<agFiles.length;ai++){agData=agData.concat(parseAgenda(await readXlsx(agFiles[ai])));}
+      window.__AG_DEBUG={rawCount:agData.length,fileCount:agFiles.length};
       var dateSet=new Set();
       agData.forEach(function(item){
         var nop=snsToNop[item.sns];
@@ -507,6 +517,7 @@ async function processAll(){
         if(!exists)agendaFileMap[nop].push({date:item.date,tipo:item.tipo,meio:item.meio||''});
         dateSet.add(item.date);
       });
+      window.__AG_DEBUG.matchedNops=Object.keys(agendaFileMap).length;
       agendaDates=Array.from(dateSet).sort(function(a,b){
         return a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join(''));
       });
